@@ -1,0 +1,6 @@
+{
+  "name": "NOVA CORE // HARDWARE LAB",
+  "description": "Ingeniería de computación de alto rendimiento, microarquitectura, suministro de componentes de precisión y estaciones de trabajo bajo estándar suizo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

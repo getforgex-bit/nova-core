@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- Swiss Grid Background Plate (Optional transparent canvas) -->
+  <rect width="120" height="120" fill="none" />
+  
+  <!-- Outer Atomic Orbital Ring 1: Horizontal / 0deg -->
+  <ellipse cx="60" cy="60" rx="46" ry="24" stroke="#000000" stroke-width="2.5" stroke-linecap="square" />
+  
+  <!-- Outer Atomic Orbital Ring 2: Rotated 60deg (Deep Cobalt Blue) -->
+  <ellipse cx="60" cy="60" rx="46" ry="24" transform="rotate(60 60 60)" stroke="#0050cc" stroke-width="2.5" stroke-linecap="square" />
+  
+  <!-- Outer Atomic Orbital Ring 3: Rotated 120deg (Deep Cobalt Blue) -->
+  <ellipse cx="60" cy="60" rx="46" ry="24" transform="rotate(120 60 60)" stroke="#0050cc" stroke-width="2.5" stroke-linecap="square" />
+
+  <!-- Center Microchip Backing Shield (High Contrast Clean Plate) -->
+  <rect x="44" y="44" width="32" height="32" fill="#fcf9f2" stroke="#000000" stroke-width="2.5" stroke-linecap="square" />
+  <rect x="48" y="48" width="24" height="24" fill="#000000" />
+
+  <!-- Chip Pin Leads (Top) -->
+  <line x1="51" y1="44" x2="51" y2="40" stroke="#000000" stroke-width="2" />
+  <line x1="57" y1="44" x2="57" y2="40" stroke="#000000" stroke-width="2" />
+  <line x1="63" y1="44" x2="63" y2="40" stroke="#000000" stroke-width="2" />
+  <line x1="69" y1="44" x2="69" y2="40" stroke="#000000" stroke-width="2" />
+
+  <!-- Chip Pin Leads (Bottom) -->
+  <line x1="51" y1="76" x2="51" y2="80" stroke="#000000" stroke-width="2" />
+  <line x1="57" y1="76" x2="57" y2="80" stroke="#000000" stroke-width="2" />
+  <line x1="63" y1="76" x2="63" y2="80" stroke="#000000" stroke-width="2" />
+  <line x1="69" y1="76" x2="69" y2="80" stroke="#000000" stroke-width="2" />
+
+  <!-- Chip Pin Leads (Left) -->
+  <line x1="44" y1="51" x2="40" y2="51" stroke="#000000" stroke-width="2" />
+  <line x1="44" y1="57" x2="40" y2="57" stroke="#000000" stroke-width="2" />
+  <line x1="44" y1="63" x2="40" y2="63" stroke="#000000" stroke-width="2" />
+  <line x1="44" y1="69" x2="40" y2="69" stroke="#000000" stroke-width="2" />
+
+  <!-- Chip Pin Leads (Right) -->
+  <line x1="76" y1="51" x2="80" y2="51" stroke="#000000" stroke-width="2" />
+  <line x1="76" y1="57" x2="80" y2="57" stroke="#000000" stroke-width="2" />
+  <line x1="76" y1="63" x2="80" y2="63" stroke="#000000" stroke-width="2" />
+  <line x1="76" y1="69" x2="80" y2="69" stroke="#000000" stroke-width="2" />
+
+  <!-- Core Nova 4-Pointed Precision Star (Cobalt Blue & Light Accent) -->
+  <path d="M60 51 L62.5 57.5 L69 60 L62.5 62.5 L60 69 L57.5 62.5 L51 60 L57.5 57.5 Z" fill="#dae1ff" stroke="#0050cc" stroke-width="1.5" stroke-linejoin="miter" />
+  
+  <!-- Central Micro-Dot -->
+  <circle cx="60" cy="60" r="1.5" fill="#0050cc" />
+</svg>
