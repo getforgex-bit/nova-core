@@ -175,3 +175,39 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #747878;
 }
+
+/* Swiss Grid Animation System */
+@keyframes swissGridSweep {
+  0% {
+    top: 0%;
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    top: 100%;
+    opacity: 0.1;
+  }
+}
+
+@keyframes swissGridPulse {
+  0%, 100% {
+    opacity: 0.85;
+    background-color: #fcf9f2;
+    border-color: #000000;
+  }
+  50% {
+    opacity: 1;
+    background-color: #f0f4ff;
+    border-color: #0050cc;
+  }
+}
+
+.animate-swiss-sweep {
+  animation: swissGridSweep 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-swiss-pulse {
+  animation: swissGridPulse 1.4s ease-in-out infinite;
+}

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { CartItem } from '../types';
+import { HARDWARE_CATALOG } from '../data/hardware';
+import { generateOrderPdf } from '../utils/generateOrderPdf';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -20,6 +22,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 }) => {
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [orderRef, setOrderRef] = useState('');
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isExportingJson, setIsExportingJson] = useState(false);
+  const [jsonExportSuccess, setJsonExportSuccess] = useState(false);
 
   if (!isOpen) return null;
 
@@ -39,6 +44,119 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     onClose();
   };
 
+  const handleDownloadPdf = () => {
+    if (items.length === 0) return;
+    setIsGeneratingPdf(true);
+    try {
+      const folioToUse = orderRef || 'NC-ORD-' + Math.floor(100000 + Math.random() * 900000);
+      const doc = generateOrderPdf({
+        items,
+        orderRef: folioToUse,
+      });
+      doc.save(`NOVA_CORE_ORDEN_${folioToUse}.pdf`);
+    } catch (err) {
+      console.error('Error al generar resumen PDF:', err);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleExportJson = () => {
+    if (items.length === 0) return;
+    setIsExportingJson(true);
+    try {
+      const folioToUse = orderRef || 'NC-CFG-' + Math.floor(100000 + Math.random() * 900000);
+
+      const hardwareSpecifications = items.map((item, index) => {
+        const catalogMatch = HARDWARE_CATALOG.find(
+          (c) =>
+            c.id === item.id ||
+            c.sku.toLowerCase() === (item.sku || '').toLowerCase() ||
+            c.name.toLowerCase() === item.name.toLowerCase()
+        );
+
+        return {
+          itemIndex: index + 1,
+          id: item.id,
+          sku: item.sku || catalogMatch?.sku || `NC-SKU-${index + 1}`,
+          brand: catalogMatch?.brand || 'NOVA CORE CERTIFIED',
+          name: item.name,
+          category: item.category || catalogMatch?.category || 'hardware',
+          quantity: item.quantity,
+          unitPriceMXN: item.price,
+          totalPriceMXN: item.price * item.quantity,
+          technicalSummary:
+            catalogMatch?.subtitle || 'Componente verificado bajo estándar industrial',
+          tdpWattage:
+            catalogMatch?.tdpWattage ||
+            (item.category?.toLowerCase().includes('cpu')
+              ? 105
+              : item.category?.toLowerCase().includes('gpu')
+              ? 200
+              : null),
+          badges: {
+            primary: catalogMatch?.badgeTopLeft || null,
+            secondary: catalogMatch?.badgeBottomRight || null,
+          },
+          detailedSpecifications: catalogMatch?.specs || [
+            { label: 'CALIDAD:', value: 'CERTIFICADA POR LABORATORIO NOVA CORE' },
+          ],
+        };
+      });
+
+      const totalTdpWatts = hardwareSpecifications.reduce(
+        (sum, item) => sum + (item.tdpWattage || 0) * item.quantity,
+        0
+      );
+
+      const exportPayload = {
+        meta: {
+          system: 'NOVA CORE LABS // INDUSTRIAL HARDWARE ARCHITECTURE',
+          exportType: 'HARDWARE_CONFIG_SPECIFICATION',
+          schemaVersion: '2.4.0',
+          exportedAt: new Date().toISOString(),
+          configurationFolio: folioToUse,
+          status: checkoutComplete ? 'ORDER_CONFIRMED' : 'DRAFT_SPECIFICATION',
+          laboratoryGuarantee: '36 Meses de Garantía Directa NOVA CORE Lab',
+          certification: 'ISO-9001:2026 HARDWARE INTEGRATION COMPLIANT',
+        },
+        financialSummary: {
+          currency: 'MXN',
+          subtotalNeto: subtotal,
+          iva16Percent: iva,
+          totalNetoAutorizado: total,
+          itemCount: items.reduce((acc, i) => acc + i.quantity, 0),
+          uniqueSkus: items.length,
+        },
+        telemetry: {
+          estimatedTotalTdpWatts: totalTdpWatts,
+          recommendedPsuWattage: Math.ceil((totalTdpWatts * 1.35) / 50) * 50,
+          efficiencyTarget: '80 PLUS GOLD OR HIGHER',
+        },
+        hardwareConfiguration: hardwareSpecifications,
+      };
+
+      const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
+        type: 'application/json;charset=utf-8',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `NOVA_CORE_CONFIG_${folioToUse}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setJsonExportSuccess(true);
+      setTimeout(() => setJsonExportSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error al exportar configuración JSON:', err);
+    } finally {
+      setIsExportingJson(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
@@ -48,7 +166,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       />
 
       {/* Drawer Panel */}
-      <aside aria-label="Bolsa de Pedido" className="relative w-full max-w-md bg-[#ffffff] border-l border-black shadow-2xl flex flex-col justify-between z-10 overflow-hidden">
+      <aside
+        aria-label="Bolsa de Pedido"
+        className="relative w-full max-w-md bg-[#ffffff] border-l border-black shadow-2xl flex flex-col justify-between z-10 overflow-hidden"
+      >
         {/* Header */}
         <div className="bg-black text-white p-4 flex items-center justify-between border-b border-black">
           <div className="flex items-center gap-2">
@@ -59,13 +180,37 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               [BOLSA DE PEDIDO NOVA CORE]
             </span>
           </div>
-          <button
-            onClick={onClose}
-            className="text-white hover:text-[#b3c5ff] transition-colors p-1 cursor-pointer"
-            title="Cerrar"
-          >
-            <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {items.length > 0 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleDownloadPdf}
+                  disabled={isGeneratingPdf}
+                  className="px-2 py-1 font-mono text-[10px] uppercase font-bold text-[#b3c5ff] hover:text-white border border-[#b3c5ff] hover:border-white transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Descargar Resumen de Orden PDF"
+                >
+                  <span className="material-symbols-outlined text-[13px]">picture_as_pdf</span>
+                  <span>PDF</span>
+                </button>
+                <button
+                  onClick={handleExportJson}
+                  disabled={isExportingJson}
+                  className="px-2 py-1 font-mono text-[10px] uppercase font-bold text-[#b3c5ff] hover:text-white border border-[#b3c5ff] hover:border-white transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Exportar configuración de hardware a formato JSON"
+                >
+                  <span className="material-symbols-outlined text-[13px]">data_object</span>
+                  <span>JSON</span>
+                </button>
+              </div>
+            )}
+            <button
+              onClick={onClose}
+              className="text-white hover:text-[#b3c5ff] transition-colors p-1 cursor-pointer"
+              title="Cerrar"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
         </div>
 
         {checkoutComplete ? (
@@ -102,12 +247,48 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <span className="text-[#0050cc] font-bold">DIRECTA NOVA CORE</span>
               </div>
             </div>
-            <button
-              onClick={handleFinish}
-              className="w-full bg-black text-white py-3 font-mono text-[12px] uppercase font-bold tracking-wider hover:bg-[#0050cc] transition-colors cursor-pointer"
-            >
-              Cerrar y Regresar
-            </button>
+
+            <div className="w-full space-y-2 pt-2">
+              {jsonExportSuccess && (
+                <div className="bg-emerald-50 border border-emerald-600 text-emerald-800 px-3 py-1.5 text-[10px] font-mono flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                  <span>Especificaciones JSON exportadas con éxito al equipo local.</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleDownloadPdf}
+                  disabled={isGeneratingPdf}
+                  className="w-full bg-white text-black border border-black py-2.5 px-2 font-mono text-[10px] uppercase font-bold tracking-wider hover:bg-[#f1eee7] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Descargar comprobante oficial PDF"
+                >
+                  <span className="material-symbols-outlined text-[15px] text-[#0050cc]">
+                    picture_as_pdf
+                  </span>
+                  <span>{isGeneratingPdf ? 'Generando...' : 'Comprobante PDF'}</span>
+                </button>
+
+                <button
+                  onClick={handleExportJson}
+                  disabled={isExportingJson}
+                  className="w-full bg-white text-black border border-black py-2.5 px-2 font-mono text-[10px] uppercase font-bold tracking-wider hover:bg-[#f1eee7] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Exportar configuración técnica en JSON"
+                >
+                  <span className="material-symbols-outlined text-[15px] text-[#0050cc]">
+                    data_object
+                  </span>
+                  <span>{isExportingJson ? 'Exportando...' : 'Exportar JSON'}</span>
+                </button>
+              </div>
+
+              <button
+                onClick={handleFinish}
+                className="w-full bg-black text-white py-3 font-mono text-[12px] uppercase font-bold tracking-wider hover:bg-[#0050cc] transition-colors cursor-pointer"
+              >
+                Cerrar y Regresar
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -194,13 +375,53 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   </div>
                 </div>
 
-                <button
-                  onClick={handleCheckout}
-                  className="w-full bg-black text-white py-3 font-mono text-[12px] uppercase font-bold tracking-wider hover:bg-[#0050cc] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
-                >
-                  <span className="material-symbols-outlined text-[18px]">lock</span>
-                  <span>Confirmar Pedido de Hardware</span>
-                </button>
+                <div className="space-y-2 pt-1">
+                  {jsonExportSuccess && (
+                    <div className="bg-emerald-50 border border-emerald-600 text-emerald-800 px-3 py-1.5 text-[10px] font-mono flex items-center gap-1.5 animate-fadeIn">
+                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                      <span>Configuración JSON exportada y guardada exitosamente.</span>
+                    </div>
+                  )}
+
+                  {/* Dual Export Actions: PDF & JSON */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleDownloadPdf}
+                      disabled={isGeneratingPdf}
+                      className="w-full bg-white text-black border border-black py-2.5 px-2 font-mono text-[10px] uppercase font-bold tracking-wider hover:bg-[#f1eee7] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                      title="Descargar resumen técnico en PDF con identidad visual NOVA CORE"
+                    >
+                      <span className="material-symbols-outlined text-[15px] text-[#0050cc]">
+                        picture_as_pdf
+                      </span>
+                      <span>
+                        {isGeneratingPdf ? 'Generando...' : 'Resumen PDF'}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={handleExportJson}
+                      disabled={isExportingJson}
+                      className="w-full bg-white text-black border border-black py-2.5 px-2 font-mono text-[10px] uppercase font-bold tracking-wider hover:bg-[#f1eee7] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                      title="Exportar configuración técnica actual a archivo JSON para proyectos futuros"
+                    >
+                      <span className="material-symbols-outlined text-[15px] text-[#0050cc]">
+                        data_object
+                      </span>
+                      <span>
+                        {isExportingJson ? 'Exportando...' : 'Exportar JSON'}
+                      </span>
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={handleCheckout}
+                    className="w-full bg-black text-white py-3 font-mono text-[12px] uppercase font-bold tracking-wider hover:bg-[#0050cc] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">lock</span>
+                    <span>Confirmar Pedido de Hardware</span>
+                  </button>
+                </div>
               </div>
             )}
           </>
@@ -209,3 +430,4 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     </div>
   );
 };
+

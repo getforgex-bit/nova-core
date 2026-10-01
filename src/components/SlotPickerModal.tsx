@@ -1,24 +1,31 @@
 import React from 'react';
 import { ConfiguratorSlot, HardwareComponent } from '../types';
 import { HARDWARE_CATALOG } from '../data/hardware';
+import { validateCpuMoboCompatibility, extractSocket } from '../utils/compatibilityValidator';
 
 interface SlotPickerModalProps {
   slot: ConfiguratorSlot | null;
+  allSlots?: ConfiguratorSlot[];
   onClose: () => void;
   onSelectComponent: (slotNumber: string, newComponent: HardwareComponent) => void;
 }
 
 export const SlotPickerModal: React.FC<SlotPickerModalProps> = ({
   slot,
+  allSlots,
   onClose,
   onSelectComponent,
 }) => {
+  const [selectedItemVariants, setSelectedItemVariants] = React.useState<Record<string, string>>({});
   if (!slot) return null;
 
   // Filter components matching the category
   const availableOptions = HARDWARE_CATALOG.filter(
     (c) => c.category === slot.category || (slot.category === 'thermal' && c.category === 'thermal')
   );
+
+  const currentCpu = allSlots?.find((s) => s.category === 'cpu')?.component;
+  const currentMobo = allSlots?.find((s) => s.category === 'mobo')?.component;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -68,12 +75,34 @@ export const SlotPickerModal: React.FC<SlotPickerModalProps> = ({
               const isSelected = item.id === slot.component.id;
               const priceDiff = item.price - slot.component.price;
 
+              // Check compatibility preview
+              let compatCheck: { isCompatible: boolean; description: string } | null = null;
+              if (slot.category === 'cpu' && currentMobo) {
+                const res = validateCpuMoboCompatibility(item, currentMobo);
+                compatCheck = {
+                  isCompatible: res.isCompatible,
+                  description: res.isCompatible
+                    ? `Compatible con placa actual (${res.moboSocket})`
+                    : `Incompatible con placa (${res.cpuSocket} ≠ ${res.moboSocket})`,
+                };
+              } else if (slot.category === 'mobo' && currentCpu) {
+                const res = validateCpuMoboCompatibility(currentCpu, item);
+                compatCheck = {
+                  isCompatible: res.isCompatible,
+                  description: res.isCompatible
+                    ? `Compatible con CPU actual (${res.cpuSocket})`
+                    : `Incompatible con CPU (${res.cpuSocket} ≠ ${res.moboSocket})`,
+                };
+              }
+
               return (
                 <div
                   key={item.id}
                   className={`p-3 border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
                     isSelected
                       ? 'border-[#0050cc] bg-[#f9f7ff]'
+                      : compatCheck && !compatCheck.isCompatible
+                      ? 'border-red-400 bg-red-50/60 hover:bg-red-50'
                       : 'border-black bg-white hover:bg-[#f6f3ec]'
                   }`}
                 >
@@ -84,11 +113,30 @@ export const SlotPickerModal: React.FC<SlotPickerModalProps> = ({
                       className="w-16 h-16 object-cover border border-[#c4c7c7] bg-[#ebe8e1] shrink-0"
                     />
                     <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 font-mono text-[10px]">
+                      <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
                         <span className="bg-black text-white px-1 font-bold">{item.sku}</span>
                         <span className="text-[#0050cc] font-bold uppercase">{item.brand}</span>
                         {item.tdpWattage && (
                           <span className="text-[#444748]">TDP {item.tdpWattage}W</span>
+                        )}
+                        {(item.socket || item.category === 'cpu' || item.category === 'mobo') && (
+                          <span className="bg-[#1c2024] text-white px-1 font-bold">
+                            SOCKET {extractSocket(item)}
+                          </span>
+                        )}
+                        {compatCheck && (
+                          <span
+                            className={`px-1.5 py-0.5 font-bold uppercase flex items-center gap-1 border ${
+                              compatCheck.isCompatible
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-500'
+                                : 'bg-red-100 text-red-800 border-red-600'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-[12px]">
+                              {compatCheck.isCompatible ? 'check_circle' : 'warning'}
+                            </span>
+                            {compatCheck.description}
+                          </span>
                         )}
                       </div>
                       <h4 className="font-['Space_Grotesk'] text-[15px] font-bold uppercase text-black leading-tight">
@@ -123,10 +171,12 @@ export const SlotPickerModal: React.FC<SlotPickerModalProps> = ({
                         onSelectComponent(slot.slotNumber, item);
                         onClose();
                       }}
-                      className={`px-3 py-1 font-mono text-[11px] uppercase tracking-wider font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                      className={`px-3 py-1.5 font-mono text-[11px] uppercase font-bold border transition-colors cursor-pointer shrink-0 ${
                         isSelected
-                          ? 'bg-[#0050cc] text-white cursor-default'
-                          : 'bg-black text-white hover:bg-[#0050cc]'
+                          ? 'bg-[#0050cc] text-white border-[#0050cc]'
+                          : compatCheck && !compatCheck.isCompatible
+                          ? 'bg-red-600 text-white border-red-700 hover:bg-red-700'
+                          : 'bg-black text-white border-black hover:bg-[#0050cc] hover:border-[#0050cc]'
                       }`}
                     >
                       {isSelected ? 'Activo' : 'Seleccionar'}

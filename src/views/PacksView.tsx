@@ -15,6 +15,7 @@ export const PacksView: React.FC<PacksViewProps> = ({
   onBookService,
 }) => {
   const [filterCategory, setFilterCategory] = useState<'all' | 'oficina' | 'gaming' | 'workstation' | 'ultra'>('all');
+  const [selectedPackVariants, setSelectedPackVariants] = useState<Record<string, string>>({});
 
   const filteredPacks = PREBUILT_PACKS.filter((p) => {
     if (filterCategory === 'all') return true;
@@ -136,87 +137,178 @@ export const PacksView: React.FC<PacksViewProps> = ({
       {/* SECTION: GRID OF 4 FEATURED PRE-BUILT PACKS */}
       <section className="w-full px-4 md:px-12 py-8 bg-[#f6f3ec]">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredPacks.map((pack) => (
-            <article
-              key={pack.id}
-              className="bg-white flex flex-col justify-between shadow-xs hover:shadow-md transition-shadow border border-black"
-            >
-              <div>
-                {/* Header Bar */}
-                <div
-                  className={`p-3 flex items-center justify-between border-b border-black ${
-                    pack.headerStyle === 'dark'
-                      ? 'bg-black text-white'
-                      : 'bg-[#ebe8e1] text-black'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`font-mono text-[10px] font-bold px-1.5 py-0.5 ${
-                        pack.headerStyle === 'dark'
-                          ? 'bg-[#0050cc] text-white'
-                          : pack.headerStyle === 'accent'
-                          ? 'bg-[#0050cc] text-white'
-                          : 'bg-black text-white'
-                      }`}
-                    >
-                      REF: {pack.ref}
-                    </span>
-                    <span
-                      className={`font-mono text-[10px] uppercase tracking-wider ${
-                        pack.headerStyle === 'dark' ? 'text-[#dae1ff]' : 'text-[#444748]'
-                      }`}
-                    >
-                      {pack.series}
+          {filteredPacks.map((pack) => {
+            const activeVariantId = selectedPackVariants[pack.id] || pack.variants?.[0]?.id;
+            const activeVariant = pack.variants?.find((v) => v.id === activeVariantId);
+
+            const effectiveImage = activeVariant?.image || pack.image;
+            const effectivePrice =
+              activeVariant?.price !== undefined
+                ? activeVariant.price
+                : pack.price + (activeVariant?.priceDelta || 0);
+            const effectiveChassisTag = activeVariant?.chassisTag || pack.chassisTag;
+            const effectiveName = activeVariant
+              ? `${pack.name} (${activeVariant.name})`
+              : pack.name;
+
+            const packForAction: PrebuiltPack = {
+              ...pack,
+              name: effectiveName,
+              price: effectivePrice,
+              image: effectiveImage,
+              chassisTag: effectiveChassisTag,
+              selectedVariantId: activeVariant?.id,
+            };
+
+            return (
+              <article
+                key={pack.id}
+                className="bg-white flex flex-col justify-between shadow-xs hover:shadow-md transition-shadow border border-black"
+              >
+                <div>
+                  {/* Header Bar */}
+                  <div
+                    className={`p-3 flex items-center justify-between border-b border-black ${
+                      pack.headerStyle === 'dark'
+                        ? 'bg-black text-white'
+                        : 'bg-[#ebe8e1] text-black'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`font-mono text-[10px] font-bold px-1.5 py-0.5 ${
+                          pack.headerStyle === 'dark'
+                            ? 'bg-[#0050cc] text-white'
+                            : pack.headerStyle === 'accent'
+                            ? 'bg-[#0050cc] text-white'
+                            : 'bg-black text-white'
+                        }`}
+                      >
+                        REF: {pack.ref}
+                      </span>
+                      <span
+                        className={`font-mono text-[10px] uppercase tracking-wider ${
+                          pack.headerStyle === 'dark' ? 'text-[#dae1ff]' : 'text-[#444748]'
+                        }`}
+                      >
+                        {pack.series}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[10px] font-bold text-[#0050cc] flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#0050cc]"></span> STOCK
+                      DISPONIBLE [{pack.stockCount} UDS]
                     </span>
                   </div>
-                  <span className="font-mono text-[10px] font-bold text-[#0050cc] flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#0050cc]"></span> STOCK
-                    DISPONIBLE [{pack.stockCount} UDS]
-                  </span>
-                </div>
 
-                {/* Product Main Meta */}
-                <div className="p-6 flex flex-col md:flex-row justify-between gap-6">
-                  <div className="space-y-2 flex-1">
-                    <h2 className="font-['Space_Grotesk'] text-[24px] uppercase tracking-tight text-black font-bold">
-                      {pack.name}
-                    </h2>
-                    <div className="inline-block bg-[#f1eee7] px-3 py-1.5 text-black font-sans text-[13px] border border-[#ebe8e1]">
-                      <span className="font-mono text-[10px] font-bold uppercase text-black mr-1">
-                        IDEAL:
-                      </span>{' '}
-                      {pack.idealText}
+                  {/* Product Main Meta */}
+                  <div className="p-6 flex flex-col md:flex-row justify-between gap-6">
+                    <div className="space-y-2 flex-1">
+                      <h2 className="font-['Space_Grotesk'] text-[24px] uppercase tracking-tight text-black font-bold">
+                        {pack.name}
+                      </h2>
+                      <div className="inline-block bg-[#f1eee7] px-3 py-1.5 text-black font-sans text-[13px] border border-[#ebe8e1]">
+                        <span className="font-mono text-[10px] font-bold uppercase text-black mr-1">
+                          IDEAL:
+                        </span>{' '}
+                        {pack.idealText}
+                      </div>
+                    </div>
+
+                    {/* Price Block */}
+                    <div className="flex flex-col md:items-end justify-start min-w-[160px]">
+                      <span className="font-mono text-[10px] text-[#444748] uppercase">
+                        PRECIO FINAL (IVA INCL.)
+                      </span>
+                      <span className="font-['Space_Grotesk'] text-[32px] text-black font-bold leading-none tracking-tight">
+                        ${effectivePrice.toLocaleString('es-MX')}
+                      </span>
+                      <span className="font-mono text-[10px] text-[#747878] uppercase mt-0.5">
+                        {pack.monthlyNote}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Price Block */}
-                  <div className="flex flex-col md:items-end justify-start min-w-[160px]">
-                    <span className="font-mono text-[10px] text-[#444748] uppercase">
-                      PRECIO FINAL (IVA INCL.)
-                    </span>
-                    <span className="font-['Space_Grotesk'] text-[32px] text-black font-bold leading-none tracking-tight">
-                      ${pack.price.toLocaleString('es-MX')}
-                    </span>
-                    <span className="font-mono text-[10px] text-[#747878] uppercase mt-0.5">
-                      {pack.monthlyNote}
-                    </span>
-                  </div>
-                </div>
+                  {/* Pack Variants Selector Strip */}
+                  {pack.variants && pack.variants.length > 0 && (
+                    <div className="mx-6 mb-4 bg-[#f1eee7] p-2.5 border border-black space-y-2">
+                      <div className="flex items-center justify-between font-mono text-[9px]">
+                        <span className="font-bold text-black uppercase flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 bg-[#0050cc] inline-block animate-pulse"></span>
+                          CONFIGURACIÓN / EDICIÓN DISPONIBLE ({pack.variants.length}):
+                        </span>
+                        <span className="text-[#0050cc] font-bold uppercase">
+                          ACTIVO: {activeVariant?.name}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {pack.variants.map((v) => {
+                          const isSelected = activeVariant?.id === v.id;
+                          const deltaText = v.priceDelta
+                            ? v.priceDelta > 0
+                              ? `+$${v.priceDelta.toLocaleString('es-MX')}`
+                              : `-$${Math.abs(v.priceDelta).toLocaleString('es-MX')}`
+                            : v.price && v.price !== pack.price
+                            ? `$${v.price.toLocaleString('es-MX')}`
+                            : '';
 
-                {/* Visual + Benchmark Split */}
-                <div className="px-6 pb-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                  <div className="md:col-span-5 bg-[#ebe8e1] p-2 relative border border-[#c4c7c7]">
-                    <img
-                      src={pack.image}
-                      alt={pack.name}
-                      className="w-full h-44 object-cover"
-                      loading="lazy"
-                    />
-                    <span className="absolute bottom-2 left-2 bg-black text-white font-mono text-[10px] px-1.5 py-0.5 uppercase font-bold">
-                      {pack.chassisTag}
-                    </span>
-                  </div>
+                          return (
+                            <button
+                              key={v.id}
+                              type="button"
+                              onClick={() =>
+                                setSelectedPackVariants((prev) => ({
+                                  ...prev,
+                                  [pack.id]: v.id,
+                                }))
+                              }
+                              className={`font-mono text-[10px] px-2.5 py-1.5 uppercase tracking-tight border transition-all cursor-pointer flex items-center gap-1.5 ${
+                                isSelected
+                                  ? 'bg-black text-white border-black font-bold shadow-[2px_2px_0px_0px_#0050cc]'
+                                  : 'bg-white text-[#444748] border-[#c4c7c7] hover:border-black hover:text-black'
+                              }`}
+                            >
+                              {isSelected ? (
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#0050cc] shrink-0"></span>
+                              ) : (
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#c4c7c7] shrink-0"></span>
+                              )}
+                              <span>{v.name}</span>
+                              {deltaText && (
+                                <span
+                                  className={`text-[9px] font-bold ${
+                                    isSelected ? 'text-[#38bdf8]' : 'text-[#0050cc]'
+                                  }`}
+                                >
+                                  [{deltaText}]
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {activeVariant?.specsHighlight && (
+                        <div className="font-mono text-[10px] text-[#444748] pt-1 border-t border-[#c4c7c7] flex items-center gap-1">
+                          <span className="text-[#0050cc] font-bold">★ DETALLE DE EDICIÓN:</span>
+                          <span>{activeVariant.specsHighlight}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Visual + Benchmark Split */}
+                  <div className="px-6 pb-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                    <div className="md:col-span-5 bg-[#ebe8e1] p-2 relative border border-[#c4c7c7] group">
+                      <img
+                        src={effectiveImage}
+                        alt={effectiveName}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-44 object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                      <span className="absolute bottom-2 left-2 bg-black text-white font-mono text-[10px] px-1.5 py-0.5 uppercase font-bold">
+                        {effectiveChassisTag}
+                      </span>
+                    </div>
 
                   <div className="md:col-span-7 space-y-2 bg-[#f6f3ec] p-4 border border-[#c4c7c7]">
                     <div className="flex justify-between items-center pb-1 border-b border-[#ebe8e1]">
@@ -285,13 +377,13 @@ export const PacksView: React.FC<PacksViewProps> = ({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
-                    onClick={() => onBuyPack(pack)}
+                    onClick={() => onBuyPack(packForAction)}
                     className="font-mono text-[12px] uppercase tracking-wider bg-black text-white px-4 py-2.5 hover:bg-[#0050cc] transition-colors text-center font-bold cursor-pointer border border-black shadow-xs"
                   >
                     Comprar Pack Ensamblado
                   </button>
                   <button
-                    onClick={() => onCustomizePack(pack)}
+                    onClick={() => onCustomizePack(packForAction)}
                     className="font-mono text-[12px] uppercase tracking-wider bg-[#f1eee7] text-black px-4 py-2.5 hover:bg-[#ebe8e1] transition-colors text-center font-bold cursor-pointer border border-black"
                   >
                     Personalizar este Pack

@@ -17,6 +17,18 @@ export interface ComponentSpec {
   value: string;
 }
 
+export interface ComponentVariant {
+  id: string;
+  name: string;
+  sku: string;
+  priceDelta?: number; // relative price adjustment compared to base component
+  price?: number; // absolute price override if provided
+  image?: string;
+  badge?: string;
+  specsDelta?: ComponentSpec[];
+  tdpDelta?: number;
+}
+
 export interface HardwareComponent {
   id: string;
   sku: string;
@@ -29,8 +41,23 @@ export interface HardwareComponent {
   badgeTopLeft?: string;
   badgeBottomRight?: string;
   tdpWattage?: number;
+  socket?: string;
+  chipset?: string;
+  supportedChipsets?: string[];
   specs: ComponentSpec[];
   stockTag?: string;
+  variants?: ComponentVariant[];
+  selectedVariantId?: string;
+}
+
+export interface PackVariant {
+  id: string;
+  name: string;
+  priceDelta?: number;
+  price?: number;
+  image?: string;
+  chassisTag?: string;
+  specsHighlight?: string;
 }
 
 export interface PrebuiltPack {
@@ -60,6 +87,8 @@ export interface PrebuiltPack {
   warrantyText: string;
   extraTag: string;
   headerStyle?: 'default' | 'accent' | 'dark';
+  variants?: PackVariant[];
+  selectedVariantId?: string;
 }
 
 export interface TechService {

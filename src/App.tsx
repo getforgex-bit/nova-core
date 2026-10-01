@@ -14,6 +14,7 @@ import {
 } from './types';
 import { INITIAL_CONFIGURATOR_SLOTS } from './data/defaultSlots';
 import { HARDWARE_CATALOG } from './data/hardware';
+import { generateOrderPdf } from './utils/generateOrderPdf';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Toast } from './components/Toast';
@@ -206,11 +207,30 @@ export default function App() {
   };
 
   const handleShareQuote = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
-      triggerToast('ENLACE COPIADO', 'Presupuesto técnico copiado al portapapeles.');
-    } else {
-      triggerToast('PRESUPUESTO REGISTRADO', 'Referencia técnica guardada en sesión.');
+    try {
+      const buildItems: CartItem[] = slots.map((s) => ({
+        id: s.slotNumber,
+        name: `[SLOT ${s.slotNumber}] ${s.component.name}`,
+        price: s.component.price,
+        quantity: 1,
+        sku: s.component.sku,
+        category: s.category,
+      }));
+      const folio = 'NC-BUDGET-' + Math.floor(100000 + Math.random() * 900000);
+      const doc = generateOrderPdf({
+        items: buildItems,
+        orderRef: folio,
+        customerName: 'ESTACIÓN DE TRABAJO A MEDIDA',
+      });
+      doc.save(`NOVA_CORE_PRESUPUESTO_${folio}.pdf`);
+      triggerToast('PDF DESCARGADO', `Presupuesto técnico ${folio} guardado.`);
+    } catch {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(window.location.href);
+        triggerToast('ENLACE COPIADO', 'Presupuesto técnico copiado al portapapeles.');
+      } else {
+        triggerToast('PRESUPUESTO REGISTRADO', 'Referencia técnica guardada en sesión.');
+      }
     }
   };
 
@@ -303,6 +323,7 @@ export default function App() {
 
       <SlotPickerModal
         slot={slotToChange}
+        allSlots={slots}
         onClose={() => setSlotToChange(null)}
         onSelectComponent={handleSelectComponentForSlot}
       />

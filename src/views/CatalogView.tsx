@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ComponentCategory, HardwareComponent } from '../types';
 import { HARDWARE_CATALOG } from '../data/hardware';
+import { SwissGridLoader } from '../components/SwissGridLoader';
+import { ComponentComparisonModal } from '../components/ComponentComparisonModal';
 
 interface CatalogViewProps {
   onAddToCart: (name: string, price: number, sku?: string, image?: string, category?: string) => void;
@@ -67,6 +69,49 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   ]);
   const [maxPrice, setMaxPrice] = useState(45000);
   const [sortBy, setSortBy] = useState<'relevance' | 'price-asc' | 'price-desc'>('relevance');
+  const [isFiltering, setIsFiltering] = useState(false);
+  const [comparedComponents, setComparedComponents] = useState<HardwareComponent[]>([]);
+  const [isComparisonOpen, setIsComparisonOpen] = useState(false);
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
+
+  const handleToggleCompare = (comp: HardwareComponent) => {
+    setComparedComponents((prev) => {
+      const exists = prev.some((c) => c.id === comp.id);
+      if (exists) {
+        return prev.filter((c) => c.id !== comp.id);
+      }
+      if (prev.length < 2) {
+        return [...prev, comp];
+      }
+      // Replace the second item
+      return [prev[0], comp];
+    });
+  };
+
+  const handleOpenComparison = () => {
+    if (comparedComponents.length === 0) {
+      const cpu1 = HARDWARE_CATALOG.find((c) => c.id === 'cpu-7800x3d') || HARDWARE_CATALOG[0];
+      const cpu2 = HARDWARE_CATALOG.find((c) => c.id === 'cpu-7600x') || HARDWARE_CATALOG[1];
+      setComparedComponents([cpu1, cpu2]);
+    } else if (comparedComponents.length === 1) {
+      const first = comparedComponents[0];
+      const second =
+        HARDWARE_CATALOG.find((c) => c.category === first.category && c.id !== first.id) ||
+        HARDWARE_CATALOG.find((c) => c.id !== first.id) ||
+        first;
+      setComparedComponents([first, second]);
+    }
+    setIsComparisonOpen(true);
+  };
+
+  // Trigger Swiss Grid Scanning animation whenever filters or search change
+  useEffect(() => {
+    setIsFiltering(true);
+    const timer = setTimeout(() => {
+      setIsFiltering(false);
+    }, 420);
+    return () => clearTimeout(timer);
+  }, [activeCategory, searchQuery, selectedBrands, maxPrice, sortBy]);
 
   const categories: { key: ComponentCategory; label: string }[] = [
     { key: 'all', label: '[00] TODOS' },
@@ -264,10 +309,18 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
           {/* Search Telemetry & Quick Action */}
           <div className="flex items-center gap-2 justify-between md:justify-end shrink-0">
             <div className="bg-[#ebe8e1] px-3 py-2 border border-black font-mono text-[11px] flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#0050cc] inline-block animate-pulse"></span>
-              <span className="text-[#444748] uppercase">RESULTADOS:</span>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isFiltering ? 'bg-[#0050cc] animate-ping' : 'bg-[#0050cc] animate-pulse'
+                } inline-block`}
+              ></span>
+              <span className="text-[#444748] uppercase">
+                {isFiltering ? 'ESCANEANDO:' : 'RESULTADOS:'}
+              </span>
               <span className="text-black font-bold">
-                {filteredProducts.length} de {HARDWARE_CATALOG.length}
+                {isFiltering
+                  ? 'CALIBRANDO MATRIZ...'
+                  : `${filteredProducts.length} de ${HARDWARE_CATALOG.length}`}
               </span>
             </div>
 
@@ -279,6 +332,21 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                 Restablecer
               </button>
             )}
+
+            <button
+              onClick={handleOpenComparison}
+              className={`px-3 py-2 font-mono text-[11px] uppercase font-bold transition-colors cursor-pointer border border-black flex items-center gap-1.5 whitespace-nowrap ${
+                comparedComponents.length > 0
+                  ? 'bg-[#0050cc] text-white hover:bg-black'
+                  : 'bg-white hover:bg-black hover:text-white text-black'
+              }`}
+              title="Abrir comparador técnico lado a lado"
+            >
+              <span className="material-symbols-outlined text-[16px]">
+                compare_arrows
+              </span>
+              <span>Comparador ({comparedComponents.length}/2)</span>
+            </button>
           </div>
         </div>
 
@@ -496,15 +564,29 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
             {/* Result Controls Ribbon */}
             <div className="bg-white p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs border border-black">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[10px] uppercase bg-[#ebe8e1] text-black px-1.5 py-0.5 font-bold border border-[#c4c7c7]">
-                  [FILTRO ACTIVO]
+                <span
+                  className={`font-mono text-[10px] uppercase px-1.5 py-0.5 font-bold border ${
+                    isFiltering
+                      ? 'bg-[#0050cc] text-white border-[#0050cc]'
+                      : 'bg-[#ebe8e1] text-black border-[#c4c7c7]'
+                  }`}
+                >
+                  {isFiltering ? '[ESCANEANDO MATRIZ]' : '[FILTRO ACTIVO]'}
                 </span>
                 <span className="font-mono text-[12px] text-black font-bold">
-                  {filteredProducts.length} COMPONENTES PRINCIPALES ENCONTRADOS
-                  {searchQuery && (
-                    <span className="text-[#0050cc] ml-1 font-mono">
-                      PARA: &ldquo;{searchQuery}&rdquo;
+                  {isFiltering ? (
+                    <span className="text-[#0050cc] animate-pulse">
+                      CALIBRANDO SILICIO Y PARÁMETROS INDUSTRIALES...
                     </span>
+                  ) : (
+                    <>
+                      {filteredProducts.length} COMPONENTES PRINCIPALES ENCONTRADOS
+                      {searchQuery && (
+                        <span className="text-[#0050cc] ml-1 font-mono">
+                          PARA: &ldquo;{searchQuery}&rdquo;
+                        </span>
+                      )}
+                    </>
                   )}
                 </span>
               </div>
@@ -523,6 +605,17 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                     <option value="price-desc">PRECIO: MAYOR A MENOR</option>
                   </select>
                 </div>
+
+                <button
+                  onClick={handleOpenComparison}
+                  className="font-mono text-[10px] uppercase font-bold px-2.5 py-1 bg-white hover:bg-black hover:text-white text-black border border-black flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  title="Abrir comparador técnico lado a lado"
+                >
+                  <span className="material-symbols-outlined text-[15px] text-[#0050cc]">
+                    compare_arrows
+                  </span>
+                  <span>Comparar ({comparedComponents.length}/2)</span>
+                </button>
 
                 <div className="hidden md:flex items-center gap-1 bg-[#f6f3ec] p-0.5 border border-[#c4c7c7]">
                   <button className="p-1 bg-white text-black border border-[#c4c7c7]" title="Vista de Grilla">
@@ -564,8 +657,13 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
               </button>
             </div>
 
-            {/* Empty State when no results match */}
-            {filteredProducts.length === 0 ? (
+            {/* Swiss Grid Animated Loader / Empty State / Product Matrix */}
+            {isFiltering ? (
+              <SwissGridLoader
+                query={searchQuery}
+                categoryLabel={CATEGORY_NAMES[activeCategory]}
+              />
+            ) : filteredProducts.length === 0 ? (
               <div className="bg-white p-12 text-center border border-black space-y-4 shadow-sm">
                 <div className="w-12 h-12 bg-[#f1eee7] border border-black mx-auto flex items-center justify-center">
                   <span className="material-symbols-outlined text-[28px] text-[#747878]">
@@ -593,103 +691,228 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
             ) : (
               /* Product Cards Grid */
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filteredProducts.map((product) => (
-                  <article
-                    key={product.id}
-                    className="bg-white p-4 flex flex-col justify-between shadow-xs border border-black hover:shadow-md transition-shadow"
-                  >
-                    <div>
-                      {/* Header Bar */}
-                      <div className="flex items-center justify-between pb-1 bg-[#f6f3ec] px-2 py-1 border border-[#ebe8e1]">
-                        <span className="font-mono text-[10px] uppercase font-bold text-black">
-                          [{product.sku}] • {product.brand}
-                        </span>
-                        <span className="font-mono text-[10px] text-[#0050cc] font-bold flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#0050cc]"></span> EN BODEGA -
-                          ENVÍO INMEDIATO
-                        </span>
-                      </div>
+                {filteredProducts.map((product) => {
+                  const isCompared = comparedComponents.some((c) => c.id === product.id);
 
-                      {/* Image Container */}
-                      <div className="w-full h-48 bg-[#ebe8e1] my-3 relative overflow-hidden flex items-center justify-center border border-[#c4c7c7]">
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                        {product.badgeTopLeft && (
-                          <span className="absolute top-2 left-2 bg-black text-white font-mono text-[10px] px-1.5 py-0.5 uppercase font-bold">
-                            {product.badgeTopLeft}
+                  // Calculate active variant and dynamic properties
+                  const activeVariantId = selectedVariants[product.id] || product.variants?.[0]?.id;
+                  const activeVariant = product.variants?.find((v) => v.id === activeVariantId);
+
+                  const effectiveImage = activeVariant?.image || product.image;
+                  const effectivePrice =
+                    activeVariant?.price !== undefined
+                      ? activeVariant.price
+                      : product.price + (activeVariant?.priceDelta || 0);
+                  const effectiveSku = activeVariant?.sku || product.sku;
+                  const effectiveBadgeBottomRight =
+                    activeVariant?.badge || product.badgeBottomRight;
+                  const effectiveName = activeVariant
+                    ? `${product.name} (${activeVariant.name})`
+                    : product.name;
+
+                  const itemForBuild: HardwareComponent = {
+                    ...product,
+                    name: effectiveName,
+                    price: effectivePrice,
+                    sku: effectiveSku,
+                    image: effectiveImage,
+                    selectedVariantId: activeVariant?.id,
+                  };
+
+                  return (
+                    <article
+                      key={product.id}
+                      className={`bg-white p-4 flex flex-col justify-between shadow-xs border transition-all ${
+                        isCompared
+                          ? 'border-[#0050cc] ring-2 ring-[#0050cc]/20 shadow-md'
+                          : 'border-black hover:shadow-md'
+                      }`}
+                    >
+                      <div>
+                        {/* Header Bar */}
+                        <div className="flex items-center justify-between pb-1 bg-[#f6f3ec] px-2 py-1 border border-[#ebe8e1]">
+                          <span className="font-mono text-[10px] uppercase font-bold text-black truncate max-w-[200px]">
+                            [{effectiveSku}] • {product.brand}
                           </span>
-                        )}
-                        {product.badgeBottomRight && (
-                          <span className="absolute bottom-2 right-2 bg-white/95 text-black font-mono text-[10px] px-1.5 py-0.5 border border-black font-semibold">
-                            {product.badgeBottomRight}
-                          </span>
-                        )}
-                      </div>
-
-                      <h2 className="font-['Space_Grotesk'] text-[18px] text-black uppercase font-bold tracking-tight">
-                        {product.name}
-                      </h2>
-                      <p className="font-mono text-[11px] text-[#444748] font-medium mt-0.5">
-                        {product.subtitle}
-                      </p>
-
-                      {/* Specs Box */}
-                      <div className="mt-3 bg-[#f6f3ec] p-2 flex flex-col space-y-1 font-mono text-[10px] border border-[#ebe8e1]">
-                        {product.specs.map((spec, idx) => (
-                          <div key={idx} className="flex justify-between text-[#444748]">
-                            <span>{spec.label}</span>
-                            <span className="font-bold text-black truncate ml-2">{spec.value}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isCompared && (
+                              <span className="font-mono text-[9px] bg-[#0050cc] text-white px-1.5 py-0.2 font-bold uppercase">
+                                SELECCIONADO
+                              </span>
+                            )}
+                            <span className="font-mono text-[10px] text-[#0050cc] font-bold flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#0050cc]"></span> EN BODEGA
+                            </span>
                           </div>
-                        ))}
-                      </div>
-                    </div>
+                        </div>
 
-                    {/* Pricing and Actions */}
-                    <div className="mt-4 pt-2 border-t border-[#ebe8e1] flex flex-col space-y-2">
-                      <div className="flex items-baseline justify-between">
-                        <span className="font-mono text-[10px] uppercase text-[#747878]">
-                          PRECIO UNITARIO NETO
-                        </span>
-                        <span className="font-['Space_Grotesk'] text-[20px] text-black font-bold tracking-tight">
-                          ${product.price.toLocaleString('es-MX')} MXN
-                        </span>
+                        {/* Image Container with Dynamic Variant Support */}
+                        <div className="w-full h-48 bg-[#ebe8e1] my-3 relative overflow-hidden flex items-center justify-center border border-[#c4c7c7] group">
+                          <img
+                            src={effectiveImage}
+                            alt={effectiveName}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            loading="lazy"
+                          />
+                          {product.badgeTopLeft && (
+                            <span className="absolute top-2 left-2 bg-black text-white font-mono text-[10px] px-1.5 py-0.5 uppercase font-bold shadow-xs">
+                              {product.badgeTopLeft}
+                            </span>
+                          )}
+                          {effectiveBadgeBottomRight && (
+                            <span className="absolute bottom-2 right-2 bg-white/95 text-black font-mono text-[10px] px-1.5 py-0.5 border border-black font-semibold shadow-xs">
+                              {effectiveBadgeBottomRight}
+                            </span>
+                          )}
+                        </div>
+
+                        <h2 className="font-['Space_Grotesk'] text-[18px] text-black uppercase font-bold tracking-tight">
+                          {product.name}
+                        </h2>
+                        <p className="font-mono text-[11px] text-[#444748] font-medium mt-0.5">
+                          {product.subtitle}
+                        </p>
+
+                        {/* Interactive Variant Selector Strip */}
+                        {product.variants && product.variants.length > 0 && (
+                          <div className="mt-3 bg-[#f1eee7] p-2.5 border border-black space-y-2">
+                            <div className="flex items-center justify-between font-mono text-[9px]">
+                              <span className="font-bold text-black uppercase flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 bg-[#0050cc] inline-block animate-pulse"></span>
+                                VARIANTES DE PRODUCTO ({product.variants.length}):
+                              </span>
+                              <span className="text-[#0050cc] font-bold uppercase">
+                                SELECCIONADO: {activeVariant?.name || 'ESTÁNDAR'}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-1.5">
+                              {product.variants.map((v) => {
+                                const isSelected = activeVariant?.id === v.id;
+                                const deltaText = v.priceDelta
+                                  ? v.priceDelta > 0
+                                    ? `+$${v.priceDelta.toLocaleString('es-MX')}`
+                                    : `-$${Math.abs(v.priceDelta).toLocaleString('es-MX')}`
+                                  : v.price && v.price !== product.price
+                                  ? `$${v.price.toLocaleString('es-MX')}`
+                                  : '';
+
+                                return (
+                                  <button
+                                    key={v.id}
+                                    type="button"
+                                    onClick={() =>
+                                      setSelectedVariants((prev) => ({
+                                        ...prev,
+                                        [product.id]: v.id,
+                                      }))
+                                    }
+                                    className={`font-mono text-[10px] px-2 py-1 uppercase tracking-tight border transition-all cursor-pointer flex items-center gap-1.5 ${
+                                      isSelected
+                                        ? 'bg-black text-white border-black font-bold shadow-[2px_2px_0px_0px_#0050cc]'
+                                        : 'bg-white text-[#444748] border-[#c4c7c7] hover:border-black hover:text-black'
+                                    }`}
+                                    title={`Seleccionar variante: ${v.name}`}
+                                  >
+                                    {isSelected ? (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#0050cc] shrink-0"></span>
+                                    ) : (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#c4c7c7] shrink-0"></span>
+                                    )}
+                                    <span className="truncate max-w-[130px] sm:max-w-[180px]">{v.name}</span>
+                                    {deltaText && (
+                                      <span
+                                        className={`text-[9px] font-bold shrink-0 ${
+                                          isSelected ? 'text-[#38bdf8]' : 'text-[#0050cc]'
+                                        }`}
+                                      >
+                                        [{deltaText}]
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Specs Box */}
+                        <div className="mt-3 bg-[#f6f3ec] p-2 flex flex-col space-y-1 font-mono text-[10px] border border-[#ebe8e1]">
+                          {product.specs.map((spec, idx) => (
+                            <div key={idx} className="flex justify-between text-[#444748]">
+                              <span>{spec.label}</span>
+                              <span className="font-bold text-black truncate ml-2">{spec.value}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 pt-1">
+                      {/* Pricing and Actions */}
+                      <div className="mt-4 pt-2 border-t border-[#ebe8e1] flex flex-col space-y-2">
+                        <div className="flex items-baseline justify-between">
+                          <span className="font-mono text-[10px] uppercase text-[#747878]">
+                            PRECIO UNITARIO NETO
+                          </span>
+                          <span className="font-['Space_Grotesk'] text-[20px] text-black font-bold tracking-tight">
+                            ${effectivePrice.toLocaleString('es-MX')} MXN
+                          </span>
+                        </div>
+
+                        {/* Compare Selection Button */}
                         <button
-                          onClick={() =>
-                            onAddToCart(
-                              product.name,
-                              product.price,
-                              product.sku,
-                              product.image,
-                              product.category
-                            )
+                          onClick={() => handleToggleCompare(itemForBuild)}
+                          className={`w-full font-mono text-[10px] uppercase py-1.5 font-bold tracking-wider transition-colors flex items-center justify-center gap-1.5 cursor-pointer border ${
+                            isCompared
+                              ? 'bg-[#0050cc] text-white border-[#0050cc]'
+                              : 'bg-white text-black hover:bg-[#f6f3ec] border-black'
+                          }`}
+                          title={
+                            isCompared
+                              ? 'Remover del comparador técnico'
+                              : 'Seleccionar para comparar especificaciones lado a lado'
                           }
-                          className="bg-black text-white hover:bg-[#0050cc] font-mono text-[11px] uppercase py-2 font-bold tracking-wider transition-colors flex items-center justify-center gap-1 cursor-pointer border border-black"
                         >
-                          <span className="material-symbols-outlined text-[16px]">
-                            add_shopping_cart
+                          <span className="material-symbols-outlined text-[15px]">
+                            {isCompared ? 'check_circle' : 'compare_arrows'}
                           </span>
-                          <span>Añadir</span>
-                        </button>
-                        <button
-                          onClick={() => onUseInBuild(product)}
-                          className="bg-[#f6f3ec] text-black hover:bg-black hover:text-white font-mono text-[11px] uppercase py-2 font-bold tracking-wider transition-colors flex items-center justify-center gap-1 cursor-pointer border border-black"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">
-                            precision_manufacturing
+                          <span>
+                            {isCompared ? '✓ Seleccionado en Comparador' : 'Comparar Especificaciones'}
                           </span>
-                          <span>Ensamble</span>
                         </button>
+
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <button
+                            onClick={() =>
+                              onAddToCart(
+                                effectiveName,
+                                effectivePrice,
+                                effectiveSku,
+                                effectiveImage,
+                                product.category
+                              )
+                            }
+                            className="bg-black text-white hover:bg-[#0050cc] font-mono text-[11px] uppercase py-2 font-bold tracking-wider transition-colors flex items-center justify-center gap-1 cursor-pointer border border-black"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">
+                              add_shopping_cart
+                            </span>
+                            <span>Añadir</span>
+                          </button>
+                          <button
+                            onClick={() => onUseInBuild(itemForBuild)}
+                            className="bg-[#f6f3ec] text-black hover:bg-black hover:text-white font-mono text-[11px] uppercase py-2 font-bold tracking-wider transition-colors flex items-center justify-center gap-1 cursor-pointer border border-black"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">
+                              precision_manufacturing
+                            </span>
+                            <span>Ensamble</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             )}
 
@@ -721,6 +944,122 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
           </main>
         </div>
       </section>
+
+      {/* Floating Comparison Dock */}
+      {comparedComponents.length > 0 && (
+        <aside
+          aria-label="Bandeja de comparación de componentes"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-4xl bg-black text-white p-3 border-2 border-black shadow-[6px_6px_0px_0px_#0050cc] flex flex-col md:flex-row items-center justify-between gap-3 animate-fadeIn"
+        >
+          {/* Left slots overview */}
+          <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2.5 h-2.5 bg-[#0050cc] inline-block"></span>
+              <span className="font-mono text-[9px] uppercase font-bold text-[#b3c5ff] tracking-wider">
+                COMPARADOR [{comparedComponents.length}/2]:
+              </span>
+            </div>
+
+            {/* Component A Slot */}
+            <div className="flex items-center gap-2 bg-[#1c1b1f] border border-white/20 px-2 py-1 shrink-0 max-w-[210px] sm:max-w-[250px]">
+              <img
+                src={comparedComponents[0].image}
+                alt={comparedComponents[0].name}
+                className="w-7 h-7 object-cover bg-white shrink-0 border border-white/30"
+              />
+              <div className="min-w-0">
+                <p className="font-mono text-[10px] text-white font-bold truncate">
+                  {comparedComponents[0].name}
+                </p>
+                <p className="font-mono text-[9px] text-[#747878] truncate">
+                  [{comparedComponents[0].sku}] • ${comparedComponents[0].price.toLocaleString('es-MX')}
+                </p>
+              </div>
+              <button
+                onClick={() => handleToggleCompare(comparedComponents[0])}
+                className="text-[#747878] hover:text-white ml-1 cursor-pointer p-0.5"
+                title="Quitar de la comparación"
+              >
+                <span className="material-symbols-outlined text-[14px]">close</span>
+              </button>
+            </div>
+
+            <span className="font-['Space_Grotesk'] text-[12px] font-bold text-[#0050cc] shrink-0">
+              VS
+            </span>
+
+            {/* Component B Slot */}
+            {comparedComponents.length > 1 ? (
+              <div className="flex items-center gap-2 bg-[#1c1b1f] border border-white/20 px-2 py-1 shrink-0 max-w-[210px] sm:max-w-[250px]">
+                <img
+                  src={comparedComponents[1].image}
+                  alt={comparedComponents[1].name}
+                  className="w-7 h-7 object-cover bg-white shrink-0 border border-white/30"
+                />
+                <div className="min-w-0">
+                  <p className="font-mono text-[10px] text-white font-bold truncate">
+                    {comparedComponents[1].name}
+                  </p>
+                  <p className="font-mono text-[9px] text-[#747878] truncate">
+                    [{comparedComponents[1].sku}] • ${comparedComponents[1].price.toLocaleString('es-MX')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleToggleCompare(comparedComponents[1])}
+                  className="text-[#747878] hover:text-white ml-1 cursor-pointer p-0.5"
+                  title="Quitar de la comparación"
+                >
+                  <span className="material-symbols-outlined text-[14px]">close</span>
+                </button>
+              </div>
+            ) : (
+              <div className="border border-dashed border-white/40 px-3 py-1 font-mono text-[10px] text-[#b3c5ff] shrink-0 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">add</span>
+                <span>Selecciona otro componente</span>
+              </div>
+            )}
+          </div>
+
+          {/* Right action buttons */}
+          <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
+            <button
+              onClick={() => setComparedComponents([])}
+              className="font-mono text-[10px] text-[#747878] hover:text-white uppercase underline cursor-pointer px-2"
+            >
+              Limpiar
+            </button>
+            <button
+              onClick={handleOpenComparison}
+              className="bg-[#0050cc] hover:bg-white hover:text-black text-white font-mono text-[11px] uppercase font-bold px-4 py-2 flex items-center gap-1.5 transition-colors cursor-pointer border border-[#0050cc] hover:border-white shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[16px]">compare_arrows</span>
+              <span>
+                {comparedComponents.length === 2
+                  ? 'Abrir Comparador Lado a Lado'
+                  : 'Comparar (Auto-completar)'}
+              </span>
+            </button>
+          </div>
+        </aside>
+      )}
+
+      {/* Side-by-Side Component Comparison Modal */}
+      {isComparisonOpen && (
+        <ComponentComparisonModal
+          isOpen={isComparisonOpen}
+          onClose={() => setIsComparisonOpen(false)}
+          componentA={comparedComponents[0] || HARDWARE_CATALOG[0]}
+          componentB={comparedComponents[1] || HARDWARE_CATALOG[1]}
+          onSelectComponentA={(comp) => {
+            setComparedComponents((prev) => [comp, prev[1] || HARDWARE_CATALOG[1]]);
+          }}
+          onSelectComponentB={(comp) => {
+            setComparedComponents((prev) => [prev[0] || HARDWARE_CATALOG[0], comp]);
+          }}
+          onAddToCart={onAddToCart}
+          onUseInBuild={onUseInBuild}
+        />
+      )}
     </div>
   );
 };
