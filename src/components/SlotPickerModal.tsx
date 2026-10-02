@@ -72,8 +72,30 @@ export const SlotPickerModal: React.FC<SlotPickerModalProps> = ({
             </div>
           ) : (
             availableOptions.map((item) => {
+              const activeVariantId = selectedItemVariants[item.id] || item.variants?.[0]?.id;
+              const activeVariant = item.variants?.find((v) => v.id === activeVariantId);
+
+              const effectiveImage = activeVariant?.image || item.image;
+              const effectivePrice =
+                activeVariant?.price !== undefined
+                  ? activeVariant.price
+                  : item.price + (activeVariant?.priceDelta || 0);
+              const effectiveSku = activeVariant?.sku || item.sku;
+              const effectiveName = activeVariant
+                ? `${item.name} (${activeVariant.name})`
+                : item.name;
+
               const isSelected = item.id === slot.component.id;
-              const priceDiff = item.price - slot.component.price;
+              const priceDiff = effectivePrice - slot.component.price;
+
+              const itemToSelect: HardwareComponent = {
+                ...item,
+                name: effectiveName,
+                price: effectivePrice,
+                sku: effectiveSku,
+                image: effectiveImage,
+                selectedVariantId: activeVariant?.id,
+              };
 
               // Check compatibility preview
               let compatCheck: { isCompatible: boolean; description: string } | null = null;
@@ -98,7 +120,7 @@ export const SlotPickerModal: React.FC<SlotPickerModalProps> = ({
               return (
                 <div
                   key={item.id}
-                  className={`p-3 border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                  className={`p-3 border transition-all flex flex-col gap-3 ${
                     isSelected
                       ? 'border-[#0050cc] bg-[#f9f7ff]'
                       : compatCheck && !compatCheck.isCompatible
@@ -106,82 +128,127 @@ export const SlotPickerModal: React.FC<SlotPickerModalProps> = ({
                       : 'border-black bg-white hover:bg-[#f6f3ec]'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-16 h-16 object-cover border border-[#c4c7c7] bg-[#ebe8e1] shrink-0"
-                    />
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
-                        <span className="bg-black text-white px-1 font-bold">{item.sku}</span>
-                        <span className="text-[#0050cc] font-bold uppercase">{item.brand}</span>
-                        {item.tdpWattage && (
-                          <span className="text-[#444748]">TDP {item.tdpWattage}W</span>
-                        )}
-                        {(item.socket || item.category === 'cpu' || item.category === 'mobo') && (
-                          <span className="bg-[#1c2024] text-white px-1 font-bold">
-                            SOCKET {extractSocket(item)}
-                          </span>
-                        )}
-                        {compatCheck && (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={effectiveImage}
+                        alt={effectiveName}
+                        referrerPolicy="no-referrer"
+                        className="w-16 h-16 object-cover border border-[#c4c7c7] bg-[#ebe8e1] shrink-0"
+                      />
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+                          <span className="bg-black text-white px-1 font-bold">{effectiveSku}</span>
+                          <span className="text-[#0050cc] font-bold uppercase">{item.brand}</span>
+                          {item.tdpWattage && (
+                            <span className="text-[#444748]">TDP {item.tdpWattage}W</span>
+                          )}
+                          {(item.socket || item.category === 'cpu' || item.category === 'mobo') && (
+                            <span className="bg-[#1c2024] text-white px-1 font-bold">
+                              SOCKET {extractSocket(item)}
+                            </span>
+                          )}
+                          {compatCheck && (
+                            <span
+                              className={`px-1.5 py-0.5 font-bold uppercase flex items-center gap-1 border ${
+                                compatCheck.isCompatible
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-500'
+                                  : 'bg-red-100 text-red-800 border-red-600'
+                              }`}
+                            >
+                              <span className="material-symbols-outlined text-[12px]">
+                                {compatCheck.isCompatible ? 'check_circle' : 'warning'}
+                              </span>
+                              {compatCheck.description}
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="font-['Space_Grotesk'] text-[15px] font-bold uppercase text-black leading-tight">
+                          {item.name}
+                        </h4>
+                        <p className="font-sans text-[11px] text-[#444748]">{item.subtitle}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0 border-[#ebe8e1] gap-2">
+                      <div className="text-right">
+                        <span className="font-mono text-[14px] font-bold text-black block">
+                          ${effectivePrice.toLocaleString('es-MX')} MXN
+                        </span>
+                        {!isSelected && (
                           <span
-                            className={`px-1.5 py-0.5 font-bold uppercase flex items-center gap-1 border ${
-                              compatCheck.isCompatible
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-500'
-                                : 'bg-red-100 text-red-800 border-red-600'
+                            className={`font-mono text-[10px] font-semibold ${
+                              priceDiff > 0 ? 'text-[#ba1a1a]' : 'text-[#0050cc]'
                             }`}
                           >
-                            <span className="material-symbols-outlined text-[12px]">
-                              {compatCheck.isCompatible ? 'check_circle' : 'warning'}
-                            </span>
-                            {compatCheck.description}
+                            {priceDiff > 0
+                              ? `+ $${priceDiff.toLocaleString('es-MX')}`
+                              : priceDiff < 0
+                              ? `- $${Math.abs(priceDiff).toLocaleString('es-MX')}`
+                              : 'Mismo precio'}
                           </span>
                         )}
                       </div>
-                      <h4 className="font-['Space_Grotesk'] text-[15px] font-bold uppercase text-black leading-tight">
-                        {item.name}
-                      </h4>
-                      <p className="font-sans text-[11px] text-[#444748]">{item.subtitle}</p>
+
+                      <button
+                        onClick={() => {
+                          onSelectComponent(slot.slotNumber, itemToSelect);
+                          onClose();
+                        }}
+                        className={`px-3 py-1.5 font-mono text-[11px] uppercase font-bold border transition-colors cursor-pointer shrink-0 ${
+                          isSelected
+                            ? 'bg-[#0050cc] text-white border-[#0050cc]'
+                            : compatCheck && !compatCheck.isCompatible
+                            ? 'bg-red-600 text-white border-red-700 hover:bg-red-700'
+                            : 'bg-black text-white border-black hover:bg-[#0050cc] hover:border-[#0050cc]'
+                        }`}
+                      >
+                        {isSelected ? 'Activo' : 'Seleccionar'}
+                      </button>
                     </div>
                   </div>
 
-                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0 border-[#ebe8e1] gap-2">
-                    <div className="text-right">
-                      <span className="font-mono text-[14px] font-bold text-black block">
-                        ${item.price.toLocaleString('es-MX')} MXN
+                  {/* Component Variants Pill Row */}
+                  {item.variants && item.variants.length > 0 && (
+                    <div className="pt-2 border-t border-[#ebe8e1] flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+                      <span className="text-[#747878] font-bold uppercase text-[9px] mr-1">
+                        Variante:
                       </span>
-                      {!isSelected && (
-                        <span
-                          className={`font-mono text-[10px] font-semibold ${
-                            priceDiff > 0 ? 'text-[#ba1a1a]' : 'text-[#0050cc]'
-                          }`}
-                        >
-                          {priceDiff > 0
-                            ? `+ $${priceDiff.toLocaleString('es-MX')}`
-                            : priceDiff < 0
-                            ? `- $${Math.abs(priceDiff).toLocaleString('es-MX')}`
-                            : 'Mismo precio'}
-                        </span>
-                      )}
-                    </div>
+                      {item.variants.map((v) => {
+                        const isVarSelected = activeVariant?.id === v.id;
+                        const deltaStr = v.priceDelta
+                          ? v.priceDelta > 0
+                            ? ` +$${v.priceDelta.toLocaleString('es-MX')}`
+                            : ` -$${Math.abs(v.priceDelta).toLocaleString('es-MX')}`
+                          : '';
 
-                    <button
-                      onClick={() => {
-                        onSelectComponent(slot.slotNumber, item);
-                        onClose();
-                      }}
-                      className={`px-3 py-1.5 font-mono text-[11px] uppercase font-bold border transition-colors cursor-pointer shrink-0 ${
-                        isSelected
-                          ? 'bg-[#0050cc] text-white border-[#0050cc]'
-                          : compatCheck && !compatCheck.isCompatible
-                          ? 'bg-red-600 text-white border-red-700 hover:bg-red-700'
-                          : 'bg-black text-white border-black hover:bg-[#0050cc] hover:border-[#0050cc]'
-                      }`}
-                    >
-                      {isSelected ? 'Activo' : 'Seleccionar'}
-                    </button>
-                  </div>
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedItemVariants((prev) => ({
+                                ...prev,
+                                [item.id]: v.id,
+                              }))
+                            }
+                            className={`px-2 py-0.5 border text-[10px] uppercase font-bold transition-all cursor-pointer ${
+                              isVarSelected
+                                ? 'bg-black text-white border-black'
+                                : 'bg-[#f1eee7] text-black border-[#c4c7c7] hover:border-black'
+                            }`}
+                          >
+                            {v.name}
+                            {deltaStr && (
+                              <span className={isVarSelected ? 'text-[#38bdf8] ml-1' : 'text-[#0050cc] ml-1'}>
+                                [{deltaStr}]
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })

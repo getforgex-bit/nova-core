@@ -391,8 +391,9 @@ export const PacksView: React.FC<PacksViewProps> = ({
                 </div>
               </div>
             </article>
-          ))}
-        </div>
+          );
+        })}
+      </div>
       </section>
 
       {/* SECTION: SERVICIOS TÉCNICOS & MANTENIMIENTO */}
