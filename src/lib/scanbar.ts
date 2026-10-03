@@ -1,15 +1,21 @@
 // Integración con Scan-bar (contrato: docs/INTEGRACION-WEBS.md del repositorio Scan-bar).
 // 1) Componentes agregados desde Scan-bar → se suman al catálogo antes del primer render.
 // 2) Cada ensamble a medida (componentes + servicios) recibe su código EAN-13/QR para cobrarlo en caja.
-// Sin VITE_SCANBAR_URL (o si Scan-bar no responde) la página funciona exactamente igual que siempre.
+// Fuera de workers.dev y sin VITE_SCANBAR_URL (o si Scan-bar no responde) la página funciona exactamente igual que siempre.
 import { HARDWARE_CATALOG } from '../data/hardware';
 import type { ComponentCategory, HardwareComponent } from '../types';
 
 const TIENDA = 'nova-core';
 
-/** URL de Scan-bar: VITE_SCANBAR_URL al compilar; para pruebas, ?scanbar=http://localhost:3000 (solo localhost). */
+/**
+ * URL de Scan-bar: VITE_SCANBAR_URL al compilar ("off" la apaga). Sin ella, en <web>.<cuenta>.workers.dev se usa
+ * scan-bar.<cuenta>.workers.dev (misma cuenta de Cloudflare). Para pruebas, ?scanbar=http://localhost:3000 (solo localhost).
+ */
 function resolverUrl(): string {
   let url = String(import.meta.env.VITE_SCANBAR_URL ?? '').trim();
+  const cuenta = /^[a-z0-9-]+\.([a-z0-9-]+\.workers\.dev)$/i.exec(window.location.hostname);
+  if (!url && cuenta) url = `https://scan-bar.${cuenta[1]}`;
+  if (url === 'off') url = '';
   try {
     const q = new URLSearchParams(window.location.search).get('scanbar');
     if (q !== null) { if (q) sessionStorage.setItem('scanbar:url', q); else sessionStorage.removeItem('scanbar:url'); }
