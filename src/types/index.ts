@@ -118,6 +118,8 @@ export interface CartItem {
   sku?: string;
   image?: string;
   category?: string;
+  /** GTIN-13 que Scan-bar emitió para un ensamble a medida (componentes + servicios). */
+  codigo?: string;
 }
 
 export type ActiveView =

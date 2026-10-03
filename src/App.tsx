@@ -15,6 +15,8 @@ import {
 import { INITIAL_CONFIGURATOR_SLOTS } from './data/defaultSlots';
 import { HARDWARE_CATALOG } from './data/hardware';
 import { generateOrderPdf } from './utils/generateOrderPdf';
+import { BUILD_SERVICES } from './data/services';
+import { registrarEnsamble, formatearGtin } from './lib/scanbar';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Toast } from './components/Toast';
@@ -85,13 +87,16 @@ export default function App() {
     price: number,
     sku?: string,
     image?: string,
-    category?: string
+    category?: string,
+    codigo?: string
   ) => {
     setCartItems((prev) => {
-      const existing = prev.find((item) => item.name === name);
+      // Dos ensambles distintos se llaman igual: el código de Scan-bar los distingue.
+      const same = (item: CartItem) => item.name === name && item.codigo === codigo;
+      const existing = prev.find(same);
       if (existing) {
         return prev.map((item) =>
-          item.name === name ? { ...item, quantity: item.quantity + 1 } : item
+          same(item) ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
       return [
@@ -104,6 +109,7 @@ export default function App() {
           sku,
           image,
           category,
+          codigo,
         },
       ];
     });
@@ -194,33 +200,51 @@ export default function App() {
     triggerToast('SLOT ACTUALIZADO', `Slot ${slotNumber} configurado con ${newComponent.name}.`);
   };
 
+  // Ensamble a medida → código de Scan-bar con todos sus componentes y servicios (si Scan-bar está configurado).
+  const skusDelEnsamble = (serviceSkus: string[]) => [...slots.map((s) => s.component.sku), ...serviceSkus];
+
   // Proceed order from configurator
-  const handleProceedBuildOrder = (total: number, partsCount: number) => {
+  const handleProceedBuildOrder = async (total: number, partsCount: number, serviceSkus: string[]) => {
+    const codigo = await registrarEnsamble(skusDelEnsamble(serviceSkus));
     handleAddToCart(
       `Ensamble a Medida Certificado (${partsCount} componentes)`,
       total,
-      'NC-CUSTOM-01',
+      codigo?.gtin ?? 'NC-CUSTOM-01',
       undefined,
-      'ENSAMBLE A MEDIDA'
+      'ENSAMBLE A MEDIDA',
+      codigo?.gtin
     );
+    if (codigo) triggerToast('CÓDIGO DE ENSAMBLE', `${formatearGtin(codigo.gtin)} · preséntalo en caja`);
     setIsCartOpen(true);
   };
 
-  const handleShareQuote = () => {
+  const handleShareQuote = async (serviceSkus: string[]) => {
+    const codigo = await registrarEnsamble(skusDelEnsamble(serviceSkus));
     try {
-      const buildItems: CartItem[] = slots.map((s) => ({
-        id: s.slotNumber,
-        name: `[SLOT ${s.slotNumber}] ${s.component.name}`,
-        price: s.component.price,
-        quantity: 1,
-        sku: s.component.sku,
-        category: s.category,
-      }));
+      const buildItems: CartItem[] = [
+        ...slots.map((s) => ({
+          id: s.slotNumber,
+          name: `[SLOT ${s.slotNumber}] ${s.component.name}`,
+          price: s.component.price,
+          quantity: 1,
+          sku: s.component.sku,
+          category: s.category,
+        })),
+        ...BUILD_SERVICES.filter((s) => serviceSkus.includes(s.sku)).map((s) => ({
+          id: s.sku,
+          name: `[SERVICIO] ${s.name}`,
+          price: s.price,
+          quantity: 1,
+          sku: s.sku,
+          category: 'servicio',
+        })),
+      ];
       const folio = 'NC-BUDGET-' + Math.floor(100000 + Math.random() * 900000);
       const doc = generateOrderPdf({
         items: buildItems,
         orderRef: folio,
         customerName: 'ESTACIÓN DE TRABAJO A MEDIDA',
+        codigo: codigo?.gtin,
       });
       doc.save(`NOVA_CORE_PRESUPUESTO_${folio}.pdf`);
       triggerToast('PDF DESCARGADO', `Presupuesto técnico ${folio} guardado.`);

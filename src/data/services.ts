@@ -45,3 +45,16 @@ export const TECH_SERVICES: TechService[] = [
     ],
   },
 ];
+
+/**
+ * Servicios que se suman al ensamble a medida. Fuente única de sus precios: los usa la vista de ensamble y
+ * Scan-bar los registra como productos (npm run sync:repos) para que formen parte del código de cada ensamble.
+ */
+export const BUILD_SERVICES = [
+  { id: 'assembly', sku: 'ENS-MONTAJE', name: 'Ensamble profesional + enrutamiento de cables', price: 600 },
+  { id: 'os', sku: 'ENS-SO-BIOS', name: 'Instalación limpia de SO, controladores y BIOS', price: 350 },
+  { id: 'stress', sku: 'ENS-ESTRES-24H', name: 'Test de estrés térmico y carga eléctrica 24H', price: 250 },
+  { id: 'fans', sku: 'ENS-VENTILACION', name: 'Kit de ventilación forzada (+2 fans PWM 140mm)', price: 480 },
+] as const;
+export type BuildServiceId = (typeof BUILD_SERVICES)[number]['id'];
+export const buildServicePrice = (id: BuildServiceId) => BUILD_SERVICES.find((s) => s.id === id)!.price;

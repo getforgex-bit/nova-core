@@ -323,6 +323,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       <span className="font-mono text-[12px] text-black font-bold">
                         ${item.price.toLocaleString('es-MX')} MXN
                       </span>
+                      {item.codigo && (
+                        <span className="block font-mono text-[9px] text-[#0050cc] uppercase font-bold mt-0.5">
+                          Código Scan-bar · preséntalo en caja
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">

@@ -8,12 +8,14 @@ import {
   LightingEffect,
 } from '../components/ChassisSchematicView';
 import { validateCpuMoboCompatibility } from '../utils/compatibilityValidator';
+import { BUILD_SERVICES, buildServicePrice } from '../data/services';
 
 interface CustomBuildViewProps {
   slots: ConfiguratorSlot[];
   onOpenSlotPicker: (slot: ConfiguratorSlot) => void;
-  onProceedOrder: (total: number, partsCount: number) => void;
-  onShareQuote: () => void;
+  /** serviceSkus: servicios elegidos (SKU de BUILD_SERVICES), parte del código del ensamble en Scan-bar. */
+  onProceedOrder: (total: number, partsCount: number, serviceSkus: string[]) => void;
+  onShareQuote: (serviceSkus: string[]) => void;
   onOpenQuickQuote: () => void;
 }
 
@@ -62,10 +64,12 @@ export const CustomBuildView: React.FC<CustomBuildViewProps> = ({
   // Dynamic calculations
   const hardwareSubtotal = slots.reduce((acc, slot) => acc + slot.component.price, 0);
 
-  const assemblyCost = includeAssembly ? 600 : 0;
-  const osCost = includeOS ? 350 : 0;
-  const stressCost = includeStressTest ? 250 : 0;
-  const extraFansCost = includeExtraFans ? 480 : 0;
+  const assemblyCost = includeAssembly ? buildServicePrice('assembly') : 0;
+  const osCost = includeOS ? buildServicePrice('os') : 0;
+  const stressCost = includeStressTest ? buildServicePrice('stress') : 0;
+  const extraFansCost = includeExtraFans ? buildServicePrice('fans') : 0;
+  const chosen = { assembly: includeAssembly, os: includeOS, stress: includeStressTest, fans: includeExtraFans };
+  const serviceSkus = BUILD_SERVICES.filter((s) => chosen[s.id]).map((s) => s.sku);
   const servicesSubtotal = assemblyCost + osCost + stressCost + extraFansCost;
 
   const totalNeto = hardwareSubtotal + servicesSubtotal;
@@ -624,7 +628,7 @@ export const CustomBuildView: React.FC<CustomBuildViewProps> = ({
                     </div>
                   </div>
                   <span className="font-mono text-[13px] font-bold text-black whitespace-nowrap pl-3">
-                    +$600 MXN
+                    +${buildServicePrice('assembly')} MXN
                   </span>
                 </label>
 
@@ -648,7 +652,7 @@ export const CustomBuildView: React.FC<CustomBuildViewProps> = ({
                     </div>
                   </div>
                   <span className="font-mono text-[13px] font-bold text-black whitespace-nowrap pl-3">
-                    +$350 MXN
+                    +${buildServicePrice('os')} MXN
                   </span>
                 </label>
 
@@ -672,7 +676,7 @@ export const CustomBuildView: React.FC<CustomBuildViewProps> = ({
                     </div>
                   </div>
                   <span className="font-mono text-[13px] font-bold text-black whitespace-nowrap pl-3">
-                    +$250 MXN
+                    +${buildServicePrice('stress')} MXN
                   </span>
                 </label>
 
@@ -701,7 +705,7 @@ export const CustomBuildView: React.FC<CustomBuildViewProps> = ({
                     </div>
                   </div>
                   <span className="font-mono text-[13px] font-bold text-black whitespace-nowrap pl-3">
-                    +$480 MXN
+                    +${buildServicePrice('fans')} MXN
                   </span>
                 </label>
               </div>
@@ -1010,7 +1014,7 @@ export const CustomBuildView: React.FC<CustomBuildViewProps> = ({
                       if (el) el.scrollIntoView({ behavior: 'smooth' });
                       return;
                     }
-                    onProceedOrder(totalNeto, slots.length);
+                    onProceedOrder(totalNeto, slots.length, serviceSkus);
                   }}
                   className={`w-full py-3 px-4 font-mono text-[12px] uppercase tracking-wider font-bold border transition-all flex items-center justify-center gap-2 shadow-md ${
                     compatibility.isCompatible
@@ -1029,7 +1033,7 @@ export const CustomBuildView: React.FC<CustomBuildViewProps> = ({
                   </span>
                 </button>
                 <button
-                  onClick={onShareQuote}
+                  onClick={() => onShareQuote(serviceSkus)}
                   className="w-full bg-white text-black py-2.5 px-4 font-mono text-[11px] uppercase tracking-wider font-bold border border-black hover:bg-[#f1eee7] transition-all flex items-center justify-center gap-2 cursor-pointer"
                   type="button"
                 >

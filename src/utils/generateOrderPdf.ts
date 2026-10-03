@@ -1,18 +1,24 @@
 import { jsPDF } from 'jspdf';
 import { CartItem } from '../types';
+import { ean13Barras } from '../lib/ean13';
 
 export interface OrderPdfOptions {
   items: CartItem[];
   orderRef?: string;
   customerName?: string;
+  /** GTIN-13 del ensamble en Scan-bar: se imprime como código de barras para cobrarlo en caja. */
+  codigo?: string;
 }
 
 export function generateOrderPdf({
   items,
   orderRef,
   customerName = 'USUARIO LAB CERTIFICADO',
+  codigo,
 }: OrderPdfOptions): jsPDF {
   const folio = orderRef || 'NC-ORD-' + Math.floor(100000 + Math.random() * 900000);
+  // Hasta 12 filas a 9 mm; con más (componentes + servicios del ensamble) se compactan a 7 mm para caber en una hoja.
+  const ROW_HEIGHT = items.length > 12 ? 7 : 9;
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -168,7 +174,7 @@ export function generateOrderPdf({
     subtotal += itemTotal;
     totalItemsCount += item.quantity;
 
-    const rowHeight = 9;
+    const rowHeight = ROW_HEIGHT;
     const isEven = index % 2 === 0;
 
     doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 246, isEven ? 255 : 241);
@@ -217,7 +223,7 @@ export function generateOrderPdf({
   // Table outer border
   doc.setDrawColor(17, 17, 17);
   doc.setLineWidth(0.3);
-  doc.rect(margin, currentY - items.length * 9 - 7, contentWidth, items.length * 9 + 7);
+  doc.rect(margin, currentY - items.length * ROW_HEIGHT - 7, contentWidth, items.length * ROW_HEIGHT + 7);
 
   // 6. TOTALS & FINANCIAL SUMMARY BLOCK
   currentY += 8;
@@ -311,6 +317,21 @@ export function generateOrderPdf({
   doc.setTextColor(100, 100, 100);
   doc.text('AUTORIZACIÓN TÉCNICA LAB', margin + 40, currentY + 16, { align: 'center' });
   doc.text('FIRMA / CONFORMIDAD CLIENTE', pageWidth - margin - 40, currentY + 16, { align: 'center' });
+
+  // Código del ensamble en Scan-bar (EAN-13 a tamaño nominal: módulo de 0.33 mm), entre las dos firmas.
+  if (codigo && /^\d{13}$/.test(codigo)) {
+    const mod = 0.33;
+    const x0 = pageWidth / 2 - (95 * mod) / 2;
+    doc.setFillColor(0, 0, 0);
+    for (const [start, width] of ean13Barras(codigo)) doc.rect(x0 + start * mod, currentY + 1, width * mod, 11, 'F');
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(17, 17, 17);
+    doc.text(`${codigo[0]} ${codigo.slice(1, 7)} ${codigo.slice(7)}`, pageWidth / 2, currentY + 15, { align: 'center' });
+    doc.setFontSize(6);
+    doc.setTextColor(100, 100, 100);
+    doc.text('CÓDIGO DE ENSAMBLE · SCAN-BAR', pageWidth / 2, currentY - 1.5, { align: 'center' });
+  }
 
   // Bottom Footer Bar
   doc.setDrawColor(17, 17, 17);
