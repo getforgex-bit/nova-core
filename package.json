@@ -10,8 +10,8 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "cf:dev": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy",
+    "cf:dev": "wrangler dev",
+    "deploy": "wrangler deploy",
     "clean": "rm -rf dist .wrangler",
     "lint": "tsc --noEmit"
   },

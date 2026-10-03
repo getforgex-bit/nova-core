@@ -1,10 +1,15 @@
 // Nova Core en Cloudflare (Workers Static Assets): SPA compilada por Vite en ./dist, sin código de servidor.
-// Publicar: npm run deploy  →  https://nova-core.<tu-cuenta>.workers.dev
-// El nombre debe coincidir con "worker" de este negocio en Scan-bar (apps/api/src/sync.ts).
+// Funciona con el despliegue por defecto de Cloudflare (Import a repository: build command vacío, `npx wrangler deploy`):
+// `build.command` compila antes de publicar. El nombre coincide con el repositorio (el que Cloudflare propone al importar)
+// y con el "worker" de este negocio en Scan-bar (apps/api/src/sync.ts).
+// Publicar desde la terminal: npm run deploy  →  https://nova-core.<tu-cuenta>.workers.dev
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "nova-core",
   "compatibility_date": "2026-09-01",
+  "build": {
+    "command": "npm run build"
+  },
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"

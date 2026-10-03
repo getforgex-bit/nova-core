@@ -4,9 +4,9 @@ Catálogo de componentes, ensamble a medida, packs y servicios técnicos (React 
 
 ## Publicar en Cloudflare
 
-Se publica como Worker de assets estáticos (`wrangler.jsonc`). Dos formas:
+Se publica como Worker de assets estáticos (`wrangler.jsonc`, que incluye `build.command`: `npx wrangler deploy` compila solo).
 
-- **Desde GitHub** (cada push a `main` publica): Workers & Pages → Create → **Import a repository** → este repositorio. Build command: `npm run build`; Deploy command: `npx wrangler deploy`.
+- **Despliegue por defecto** (recomendado; cada push a `main` publica): Workers & Pages → Create → **Import a repository** → este repositorio → **Deploy**, sin cambiar nada (nombre `nova-core`, build command vacío, deploy command `npx wrangler deploy`). Cloudflare instala con bun por `bun.lock`.
 - **Desde la terminal**: `npx wrangler login` (una vez) y `npm run deploy` (compila y publica `dist/`).
 
 Queda en `https://nova-core.<tu-cuenta>.workers.dev`. Usa Workers y no Pages: en la misma cuenta que Scan-bar, la página lo encuentra sola y Scan-bar sabe a qué URL mandar sus códigos. Pasos de todo el sistema: `docs/DESPLIEGUE.md` en el repositorio Scan-bar.
